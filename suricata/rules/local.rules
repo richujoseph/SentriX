@@ -12,3 +12,14 @@ alert tcp any any -> $HOME_NET any (msg:"SENTRIX Possible TCP SYN port scan"; fl
 # Stealth scan probes: NULL (no flags) and Xmas (FIN+PSH+URG)
 alert tcp any any -> $HOME_NET any (msg:"SENTRIX TCP NULL scan"; flags:0; threshold:type limit, track by_src, count 1, seconds 60; classtype:attempted-recon; sid:1000004; rev:1;)
 alert tcp any any -> $HOME_NET any (msg:"SENTRIX TCP Xmas scan"; flags:FPU,12; threshold:type limit, track by_src, count 1, seconds 60; classtype:attempted-recon; sid:1000005; rev:1;)
+
+# --- Rules for the lab attack scenarios (scripts/run_attacks.sh) ---
+
+# SSH brute force: 5+ connection attempts to SSH from one source in 30s (Credential Access)
+alert tcp any any -> $HOME_NET $SSH_PORTS (msg:"SENTRIX SSH brute force attempt"; flow:to_server; flags:S,12; threshold:type threshold, track by_src, count 5, seconds 30; classtype:attempted-admin; sid:1000010; rev:1;)
+
+# DNS tunneling: abnormally long base32/hex label in a DNS query (Exfiltration)
+alert dns any any -> any any (msg:"SENTRIX Possible DNS tunneling"; dns.query; pcre:"/[a-z0-9]{28,}/i"; threshold:type threshold, track by_src, count 3, seconds 60; classtype:policy-violation; sid:1000011; rev:1;)
+
+# ARP anomaly companion: ICMP from the MITM position after ARP poisoning (Reconnaissance)
+# (ARP spoofing itself is L2 and not signature-detectable; see evaluation.md.)

@@ -1,0 +1,8 @@
+admin
+root
+password
+123456
+letmein
+labpass
+toor
+qwerty

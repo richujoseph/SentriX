@@ -81,8 +81,33 @@ Notes:
 ## Detection rules
 
 Custom rules live in `suricata/rules/local.rules` (SIDs 1000001+): ICMP ping,
-SSH connection attempts, SYN port scans (20+ SYNs from one source in 10s), and
-TCP NULL / Xmas scans. After editing them, run `docker compose restart suricata`.
+SSH connection attempts, SYN port scans (20+ SYNs from one source in 10s),
+TCP NULL / Xmas scans, SSH brute force, and DNS tunneling. After editing them,
+run `docker compose restart suricata`.
+
+## Lab attack scenarios
+
+> **Lab use only.** These run inside a dedicated, opt-in `attacker` container
+> (nmap, hydra, scapy, tcpdump) against the demo targets on the isolated
+> `sentrix_lab` network. Nothing is installed on your host, and every script is
+> hardcoded to the lab IPs (172.30.0.20–22). Do not point them at anything else.
+
+`scripts/run_attacks.sh` drives four scenarios and captures each to a pcap:
+
+1. **Reconnaissance** — `nmap -sS` SYN scan of the targets
+2. **Credential access** — `hydra` SSH brute force against target-ssh
+3. **ARP cache poisoning** — scapy MITM setup against target-web (+ an L3 signal)
+4. **Exfiltration** — scapy DNS-tunneling traffic simulation
+
+```sh
+docker compose --profile attack build attacker
+docker compose --profile attack run --rm attacker /scripts/run_attacks.sh all
+docker compose restart suricata     # process the captured pcaps
+```
+
+Incidents appear on the dashboard within ~30s. See [`evaluation.md`](evaluation.md)
+for a full run-through of the attack → alert → incident → summary loop and the
+noise-reduction it achieves (in one run: 4,816 packets → 19 alerts → 3 incidents).
 
 ## Sample capture
 

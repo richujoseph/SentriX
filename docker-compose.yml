@@ -88,6 +88,25 @@ services:
       default:
         ipv4_address: 172.30.0.22
 
+  # Opt-in attacker toolbox (nmap, hydra, scapy, tcpdump) for the lab attack
+  # scenarios. LAB USE ONLY. Not started by `docker compose up` (profile below);
+  # run it explicitly, e.g.
+  #   docker compose --profile attack run --rm attacker /scripts/run_attacks.sh all
+  attacker:
+    build: ./attacker
+    profiles: ["attack"]
+    hostname: attacker
+    # Raw packet crafting (scapy, nmap -sS) and ARP replies need these.
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    networks:
+      default:
+        ipv4_address: 172.30.0.66
+    volumes:
+      - ./pcaps:/pcaps
+      - ./scripts:/scripts:ro
+
 networks:
   default:
     name: sentrix_lab
