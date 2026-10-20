@@ -57,6 +57,8 @@ class RawAlert(Base):
     severity: Mapped[int | None] = mapped_column(Integer)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     raw_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    # Stable hash of the alert's identity, so re-ingesting the same event is a no-op.
+    fingerprint: Mapped[str] = mapped_column(String(64), unique=True)
 
     incidents: Mapped[list["Incident"]] = relationship(
         secondary=incident_alerts, back_populates="alerts"

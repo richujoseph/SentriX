@@ -34,10 +34,12 @@ services:
 
   suricata:
     image: jasonish/suricata:7.0
-    # Offline mode: process the pcap once, append to logs/eve.json, then exit.
-    command: -c /etc/suricata/suricata.yaml -r /pcaps/sample.pcap -l /var/log/suricata -k none
+    # Offline mode: on every start, reprocess all captures in pcaps/ into a fresh
+    # logs/eve.json, then exit. Re-run with `docker compose restart suricata`.
+    entrypoint: ["/bin/sh", "/sentrix-run.sh"]
     restart: "no"
     volumes:
+      - ./suricata/run.sh:/sentrix-run.sh:ro
       - ./suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - ./suricata/rules/local.rules:/etc/suricata/rules/local.rules:ro
       - ./pcaps:/pcaps:ro
