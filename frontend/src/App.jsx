@@ -1,4 +1,6 @@
 import { useState } from "react";
+import Overview from "./components/Overview.jsx";
+import Assets from "./pages/Assets.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import IncidentDetail from "./pages/IncidentDetail.jsx";
 import { useHashPath } from "./router.js";
@@ -11,16 +13,27 @@ export default function App() {
   const [live, setLive] = useState({ error: null, updatedAt: null, refresh: null });
 
   const incidentMatch = path.match(/^\/incidents\/(\d+)$/);
+  const onAssets = path === "/assets";
+  const onDashboard = !incidentMatch && !onAssets;
 
   return (
     <div className="app">
       <header className="topbar">
-        <a className="brand" href="#/">
-          <span className="brand-mark" aria-hidden="true">◆</span>
-          SentriX
-          <span className="brand-sub">{incidentMatch ? `Incident #${incidentMatch[1]}` : "Incidents"}</span>
-        </a>
-        {!incidentMatch && (
+        <div className="topbar-left">
+          <a className="brand" href="#/">
+            <span className="brand-mark" aria-hidden="true">◆</span>
+            SentriX
+          </a>
+          <nav className="nav" aria-label="Main">
+            <a href="#/" aria-current={!onAssets ? "page" : undefined}>
+              Incidents
+            </a>
+            <a href="#/assets" aria-current={onAssets ? "page" : undefined}>
+              Assets
+            </a>
+          </nav>
+        </div>
+        {onDashboard && (
           <div className="topbar-status">
             <span className={`live-dot ${live.error ? "live-down" : "live-up"}`} aria-hidden="true" />
             {live.error
@@ -35,8 +48,12 @@ export default function App() {
         )}
       </header>
 
+      {!incidentMatch && <Overview />}
+
       {incidentMatch ? (
         <IncidentDetail id={Number(incidentMatch[1])} />
+      ) : onAssets ? (
+        <Assets />
       ) : (
         <Dashboard
           severity={severity}
