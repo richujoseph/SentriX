@@ -1,0 +1,14 @@
+# SentriX local rules. Custom SIDs live in the 1000000+ range.
+
+# ICMP echo request (ping) towards the home network
+alert icmp any any -> $HOME_NET any (msg:"SENTRIX ICMP Ping"; itype:8; classtype:misc-activity; sid:1000001; rev:1;)
+
+# New TCP connection attempt (bare SYN) to SSH
+alert tcp any any -> $HOME_NET $SSH_PORTS (msg:"SENTRIX SSH connection attempt"; flow:to_server; flags:S,12; classtype:attempted-recon; sid:1000002; rev:1;)
+
+# Port scan heuristic: 20+ bare SYNs from one source within 10s (alerts once per window)
+alert tcp any any -> $HOME_NET any (msg:"SENTRIX Possible TCP SYN port scan"; flags:S,12; threshold:type both, track by_src, count 20, seconds 10; classtype:attempted-recon; sid:1000003; rev:1;)
+
+# Stealth scan probes: NULL (no flags) and Xmas (FIN+PSH+URG)
+alert tcp any any -> $HOME_NET any (msg:"SENTRIX TCP NULL scan"; flags:0; threshold:type limit, track by_src, count 1, seconds 60; classtype:attempted-recon; sid:1000004; rev:1;)
+alert tcp any any -> $HOME_NET any (msg:"SENTRIX TCP Xmas scan"; flags:FPU,12; threshold:type limit, track by_src, count 1, seconds 60; classtype:attempted-recon; sid:1000005; rev:1;)

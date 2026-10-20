@@ -1,0 +1,48 @@
+%YAML 1.1
+---
+# Minimal Suricata config for offline pcap analysis. Anything not set here
+# falls back to Suricata's built-in defaults.
+
+vars:
+  address-groups:
+    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    EXTERNAL_NET: "any"
+  port-groups:
+    SSH_PORTS: "22"
+
+default-log-dir: /var/log/suricata
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            payload-printable: yes
+            metadata: yes
+        - anomaly
+        - flow
+        - ssh
+        - dns
+        - http
+        - tls
+
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: yes
+
+default-rule-path: /etc/suricata/rules
+rule-files:
+  - local.rules
+
+classification-file: /etc/suricata/classification.config
+reference-config-file: /etc/suricata/reference.config
+
+unix-command:
+  enabled: no
+
+stats:
+  enabled: no
