@@ -3,6 +3,7 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     CheckConstraint,
     Column,
     DateTime,
@@ -78,3 +79,13 @@ class Incident(Base):
     alerts: Mapped[list[RawAlert]] = relationship(
         secondary=incident_alerts, back_populates="incidents"
     )
+
+
+class IngestState(Base):
+    """Read position of a tailed log file, so restarts resume instead of re-ingesting."""
+
+    __tablename__ = "ingest_state"
+
+    path: Mapped[str] = mapped_column(String(1024), primary_key=True)
+    inode: Mapped[int] = mapped_column(BigInteger)
+    offset: Mapped[int] = mapped_column(BigInteger, default=0)
