@@ -11,6 +11,8 @@ export async function fetchIncidents({ status, minSeverity, maxSeverity, limit =
   return res.json();
 }
 
+export const incidentReportUrl = (id) => `${API_URL}/incidents/${id}/report.pdf`;
+
 export async function fetchIncident(id, signal) {
   const res = await fetch(`${API_URL}/incidents/${id}`, { signal });
   if (res.status === 404) throw new Error("Incident not found");

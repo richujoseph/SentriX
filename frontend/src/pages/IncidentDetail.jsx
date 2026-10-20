@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchIncident, summarizeIncident } from "../api.js";
+import { fetchIncident, incidentReportUrl, summarizeIncident } from "../api.js";
 import AssetPanel from "../components/AssetPanel.jsx";
 import SeverityBadge from "../components/SeverityBadge.jsx";
 import Timeline from "../components/Timeline.jsx";
@@ -102,6 +102,9 @@ export default function IncidentDetail({ id }) {
           <SeverityBadge score={incident.severity_score} />
           <h1>Incident #{incident.id}</h1>
           <span className={`status status-${incident.status}`}>{incident.status}</span>
+          <a className="primary-button" href={incidentReportUrl(incident.id)} download>
+            Download report
+          </a>
         </div>
         <dl className="detail-facts">
           <div>

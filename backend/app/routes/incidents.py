@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -10,6 +10,7 @@ from ..db import get_db
 from ..llm import LLMError
 from ..llm.summarizer import summarize_incident
 from ..models import Asset, Incident, RawAlert, incident_alerts
+from ..reports.pdf import render_incident_pdf
 from .alerts import AlertOut
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
@@ -145,9 +146,8 @@ def list_incidents(
     )
 
 
-@router.get("/{incident_id}", response_model=IncidentDetail)
-def get_incident(incident_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
-    """One incident with its member alerts in time order."""
+def incident_detail(db: Session, incident_id: int) -> dict[str, Any]:
+    """An incident with targets and its member alerts in time order; 404 if missing."""
     incident = db.scalars(
         select(Incident).where(Incident.id == incident_id).options(selectinload(Incident.alerts))
     ).first()
@@ -158,7 +158,28 @@ def get_incident(incident_id: int, db: Session = Depends(get_db)) -> dict[str, A
         incident,
         len(alerts),
         load_targets(db, [incident.id])[incident.id],
-        alerts=[AlertOut.model_validate(a) for a in alerts],
+        alerts=[AlertOut.model_validate(a).model_dump() for a in alerts],
+    )
+
+
+@router.get("/{incident_id}", response_model=IncidentDetail)
+def get_incident(incident_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """One incident with its member alerts in time order."""
+    return incident_detail(db, incident_id)
+
+
+@router.get(
+    "/{incident_id}/report.pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}, "description": "Incident report as PDF"}},
+)
+def incident_report(incident_id: int, db: Session = Depends(get_db)) -> Response:
+    """Download the incident as a PDF report (narrative, action, timeline, assets)."""
+    pdf = render_incident_pdf(incident_detail(db, incident_id))
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="sentrix-incident-{incident_id}.pdf"'},
     )
 
 

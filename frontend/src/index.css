@@ -431,3 +431,20 @@ a.card:focus-visible, a.brand:focus-visible { outline: 2px solid var(--accent); 
   .event { grid-template-columns: 1fr; gap: 2px; }
   .panel-title-row { flex-wrap: wrap; }
 }
+
+.primary-button {
+  margin-left: auto;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.primary-button:hover { background: #2563eb; }
+.primary-button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+@media (max-width: 640px) {
+  .primary-button { margin-left: 0; }
+}
