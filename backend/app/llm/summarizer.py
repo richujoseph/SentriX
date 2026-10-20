@@ -172,3 +172,47 @@ def summarize_incident(db: Session, incident: Incident, backend: LLMBackend | No
     incident.recommended_action = action
     db.commit()
     return incident
+
+
+# --- Fallback when the LLM is unavailable -------------------------------------
+
+# Marks a placeholder summary, so the scheduler knows to retry it later.
+FALLBACK_PREFIX = "[Automatic summary unavailable]"
+FALLBACK_ACTION = "Review the incident's alerts manually; an AI summary will be retried automatically."
+
+
+def is_fallback_summary(summary: str | None) -> bool:
+    return summary is not None and summary.startswith(FALLBACK_PREFIX)
+
+
+def fallback_summary(payload: dict[str, Any]) -> tuple[str, str]:
+    """A template summary built from the incident digest, used when the LLM fails."""
+    source = payload["source"]
+    origin = "internal" if source["private_address"] else "external"
+    targets = []
+    for t in payload["targets"][:3]:
+        detail = f"{t['role']}, criticality {t['criticality']}" if t["known_asset"] else "unknown host"
+        targets.append(f"{t['ip']} ({detail})")
+    more_targets = len(payload["targets"]) - 3 + payload["targets_omitted"]
+    if more_targets > 0:
+        targets.append(f"{more_targets} more")
+    tactics = " -> ".join(t["name"] for t in payload["mitre_tactics"]) or "none identified"
+    signatures = [s["signature"] for s in payload["signatures"][:3]]
+    if len(payload["signatures"]) > 3 or payload["signatures_omitted"]:
+        signatures.append("...")
+    span = payload["timespan"]
+
+    summary = (
+        f"{FALLBACK_PREFIX} {source['ip']} ({origin}) generated {payload['alert_count']} alerts "
+        f"against {', '.join(targets) or 'no recorded target'} between {span['start']} and {span['end']} "
+        f"({span['duration_seconds']}s). Tactics: {tactics}. "
+        f"Signatures: {'; '.join(signatures)}. Severity score {payload['severity_score']}."
+    )
+    return summary, FALLBACK_ACTION
+
+
+def apply_fallback_summary(db: Session, incident: Incident) -> Incident:
+    """Store the template summary on the incident and commit."""
+    incident.summary, incident.recommended_action = fallback_summary(build_incident_payload(db, incident))
+    db.commit()
+    return incident
