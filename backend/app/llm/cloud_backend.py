@@ -34,9 +34,16 @@ class CloudBackend(LLMBackend):
         self.max_tokens = max_tokens or int(os.environ.get("CLOUD_MAX_TOKENS", "1024"))
         self.timeout = timeout or float(os.environ.get("LLM_TIMEOUT", "120"))
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, system: str | None = None) -> str:
         if not self.api_key:
             raise LLMError("ANTHROPIC_API_KEY is not set")
+        body = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if system:
+            body["system"] = system
         try:
             resp = httpx.post(
                 ANTHROPIC_MESSAGES_URL,
@@ -45,11 +52,7 @@ class CloudBackend(LLMBackend):
                     "anthropic-version": ANTHROPIC_VERSION,
                     "content-type": "application/json",
                 },
-                json={
-                    "model": self.model,
-                    "max_tokens": self.max_tokens,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
+                json=body,
                 timeout=self.timeout,
             )
         except httpx.HTTPError as exc:

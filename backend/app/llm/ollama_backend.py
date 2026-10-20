@@ -25,13 +25,12 @@ class OllamaBackend(LLMBackend):
         self.model = model or os.environ.get("OLLAMA_MODEL", "qwen3:8b")
         self.timeout = timeout or float(os.environ.get("LLM_TIMEOUT", "120"))
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, system: str | None = None) -> str:
+        body = {"model": self.model, "prompt": prompt, "stream": False}
+        if system:
+            body["system"] = system
         try:
-            resp = httpx.post(
-                f"{self.url}/api/generate",
-                json={"model": self.model, "prompt": prompt, "stream": False},
-                timeout=self.timeout,
-            )
+            resp = httpx.post(f"{self.url}/api/generate", json=body, timeout=self.timeout)
         except httpx.HTTPError as exc:
             raise LLMError(f"Ollama at {self.url} is unreachable: {exc}") from exc
         if resp.is_error:

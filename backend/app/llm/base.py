@@ -13,8 +13,11 @@ class LLMBackend(ABC):
     name: str
 
     @abstractmethod
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, system: str | None = None) -> str:
         """Return the model's completion for ``prompt``.
+
+        ``system`` is an optional system prompt that sets the model's
+        instructions separately from the user content.
 
         Blocking; call it via ``asyncio.to_thread`` from async code.
 

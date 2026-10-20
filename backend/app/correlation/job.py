@@ -83,6 +83,9 @@ def correlate_once(window_minutes: float = CORRELATION_WINDOW_MINUTES) -> tuple[
                     alert_ids=[a.id for a in members],
                     alerts=members,
                 )
+                # The incident changed, so any existing summary is now stale.
+                incident.summary = None
+                incident.recommended_action = None
                 extended += 1
 
             new_alerts = [a for a in candidate.alerts if a not in incident.alerts]

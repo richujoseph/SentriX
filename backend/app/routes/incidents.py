@@ -7,6 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..db import get_db
+from ..llm import LLMError
+from ..llm.summarizer import summarize_incident
 from ..models import Incident, RawAlert, incident_alerts
 from .alerts import AlertOut
 
@@ -94,3 +96,22 @@ def get_incident(incident_id: int, db: Session = Depends(get_db)) -> dict[str, A
         raise HTTPException(status_code=404, detail="Incident not found")
     alerts = sorted(incident.alerts, key=lambda a: (a.timestamp, a.id))
     return to_out(incident, len(alerts), alerts=[AlertOut.model_validate(a) for a in alerts])
+
+
+@router.post("/{incident_id}/summarize", response_model=IncidentOut)
+def summarize(incident_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Generate the incident's summary and recommended action with the configured LLM.
+
+    Blocks until the model answers (can take tens of seconds with a local model).
+    Returns 502 if the LLM is unavailable or doesn't follow the output format.
+    """
+    incident = db.scalars(
+        select(Incident).where(Incident.id == incident_id).options(selectinload(Incident.alerts))
+    ).first()
+    if incident is None:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    try:
+        summarize_incident(db, incident)
+    except LLMError as exc:
+        raise HTTPException(status_code=502, detail=f"Summarization failed: {exc}") from exc
+    return to_out(incident, len(incident.alerts))
