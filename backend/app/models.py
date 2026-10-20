@@ -73,7 +73,8 @@ class Incident(Base):
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     severity_score: Mapped[float] = mapped_column(Float, default=0.0)
-    mitre_tactics: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # Ordered attack story: [{"id", "name", "first_seen", "alert_ids"}, ...]
+    mitre_tactics: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     summary: Mapped[str | None] = mapped_column(Text)
     recommended_action: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), default="open", index=True)
