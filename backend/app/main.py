@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import models  # noqa: F401  (registers tables on Base.metadata)
 from .db import Base, engine
 from .ingest.watcher import watch_eve_log
-from .routes import alerts
+from .routes import alerts, assets
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,6 +34,7 @@ app.add_middleware(
 )
 
 app.include_router(alerts.router)
+app.include_router(assets.router)
 
 
 @app.get("/health")
