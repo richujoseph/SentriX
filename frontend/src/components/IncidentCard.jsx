@@ -1,6 +1,8 @@
 import SeverityBadge from "./SeverityBadge.jsx";
 import { formatDateTime, formatDuration, shortHostname } from "../format.js";
+import { incidentHref } from "../router.js";
 import { severityLevel } from "../severity.js";
+import { stripFallbackPrefix } from "../summary.js";
 
 function Target({ target }) {
   if (!target) return <span className="muted">No recorded target</span>;
@@ -25,7 +27,7 @@ export default function IncidentCard({ incident }) {
   const level = severityLevel(incident.severity_score);
 
   return (
-    <article className={`card card-${level.key}`}>
+    <a className={`card card-${level.key}`} href={incidentHref(incident.id)}>
       <header className="card-header">
         <SeverityBadge score={incident.severity_score} />
         <span className="card-meta">
@@ -71,7 +73,7 @@ export default function IncidentCard({ incident }) {
         </ol>
       )}
 
-      {incident.summary && <p className="summary">{incident.summary}</p>}
-    </article>
+      {incident.summary && <p className="summary">{stripFallbackPrefix(incident.summary)}</p>}
+    </a>
   );
 }

@@ -6,6 +6,16 @@ const dateTime = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
+const timeWithSeconds = new Intl.DateTimeFormat(undefined, {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+export function formatTime(iso) {
+  return timeWithSeconds.format(new Date(iso));
+}
+
 export function formatDateTime(iso) {
   return dateTime.format(new Date(iso));
 }

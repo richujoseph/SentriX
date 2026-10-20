@@ -28,6 +28,9 @@ class TargetOut(BaseModel):
     hostname: str | None = None
     role: str | None = None
     criticality: int | None = None
+    mac: str | None = None
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
 
 
 class IncidentOut(BaseModel):
@@ -78,7 +81,14 @@ def load_targets(db: Session, incident_ids: list[int]) -> dict[int, list[TargetO
             TargetOut(ip=ip, known_asset=False)
             if asset is None
             else TargetOut(
-                ip=ip, known_asset=True, hostname=asset.hostname, role=asset.role, criticality=asset.criticality
+                ip=ip,
+                known_asset=True,
+                hostname=asset.hostname,
+                role=asset.role,
+                criticality=asset.criticality,
+                mac=asset.mac,
+                first_seen=asset.first_seen,
+                last_seen=asset.last_seen,
             )
         )
     for items in targets.values():
