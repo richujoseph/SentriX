@@ -21,6 +21,7 @@ services:
     env_file: .env
     environment:
       EVE_LOG_PATH: /logs/eve.json
+      SCAN_SUBNET: ${SCAN_SUBNET:-172.30.0.0/24}
     depends_on:
       db:
         condition: service_healthy
@@ -56,6 +57,46 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+
+  # --- Lab targets: real hosts for the asset scanner and attack scenarios. ---
+  # Fixed IPs on the lab network; no ports are published to the host.
+
+  target-ssh:
+    build: ./targets/ssh
+    hostname: target-ssh
+    restart: unless-stopped
+    environment:
+      SSH_USER: ${TARGET_SSH_USER:-labuser}
+      SSH_PASSWORD: ${TARGET_SSH_PASSWORD:-labpass}
+    networks:
+      default:
+        ipv4_address: 172.30.0.20
+
+  target-web:
+    image: nginx:1.27-alpine
+    hostname: target-web
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 172.30.0.21
+
+  target-redis:
+    image: redis:7-alpine
+    hostname: target-redis
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 172.30.0.22
+
+networks:
+  default:
+    name: sentrix_lab
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
+          # Dynamic addresses for non-target services; .2-.127 is reserved for fixed IPs.
+          ip_range: 172.30.0.128/25
 
 volumes:
   pgdata:

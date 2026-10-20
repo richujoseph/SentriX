@@ -17,6 +17,7 @@ SCAN_TOP_PORTS = int(os.environ.get("SCAN_TOP_PORTS", "100"))
 SCAN_TIMEOUT = int(os.environ.get("SCAN_TIMEOUT", "600"))
 # Refuse very large ranges: an IPv4 /20 is 4096 addresses.
 MAX_SCAN_ADDRESSES = 4096
+NMAP_SERVICES_FILE = "/usr/share/nmap/nmap-services"
 
 # First matching rule wins: (role, criticality, ports that indicate it).
 ROLE_RULES: list[tuple[str, int, set[int]]] = [
@@ -73,11 +74,38 @@ def infer_role(ports: list[OpenPort]) -> tuple[str, int]:
     return DEFAULT_ROLE
 
 
+def top_tcp_ports(n: int) -> list[int]:
+    """The n most common TCP ports according to nmap's frequency table."""
+    ranked = []
+    try:
+        with open(NMAP_SERVICES_FILE) as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 3 and not line.startswith("#") and parts[1].endswith("/tcp"):
+                    ranked.append((float(parts[2]), int(parts[1].split("/")[0])))
+    except OSError:
+        return []
+    ranked.sort(reverse=True)
+    return [port for _, port in ranked[:n]]
+
+
+def scan_ports() -> str:
+    """Top-N common ports plus every port the role rules look for.
+
+    Some role ports (e.g. Redis 6379, MongoDB 27017) are rare enough that they
+    fall outside nmap's top 1000, so --top-ports alone would miss them.
+    """
+    ports = set(top_tcp_ports(SCAN_TOP_PORTS))
+    for _, _, indicators in ROLE_RULES:
+        ports |= indicators
+    return ",".join(str(p) for p in sorted(ports))
+
+
 def run_nmap(subnet: str) -> str:
     cmd = [
         "nmap", "-oX", "-", "-T4",
         "-sV", "--version-light",
-        "--top-ports", str(SCAN_TOP_PORTS),
+        "-p", scan_ports(),
         subnet,
     ]
     try:

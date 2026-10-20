@@ -21,6 +21,34 @@ docker compose up --build
 Then open http://localhost:5173, or list ingested alerts at
 http://localhost:8000/alerts.
 
+## Lab network
+
+All services share the `sentrix_lab` Docker network, `172.30.0.0/24`. Three
+target containers give the asset scanner and attack scenarios real hosts to work
+with. They have fixed IPs and are **not** published to your machine, so they're
+only reachable from other containers on the network.
+
+| Host           | IP            | Exposes          | Scanner role (criticality) |
+|----------------|---------------|------------------|----------------------------|
+| `target-ssh`   | `172.30.0.20` | SSH (OpenSSH) 22 | server (3)                 |
+| `target-web`   | `172.30.0.21` | HTTP (nginx) 80  | web_server (4)             |
+| `target-redis` | `172.30.0.22` | Redis 6379       | database (5)               |
+
+- `target-ssh` accepts password logins as `labuser` / `labpass` (override with
+  `TARGET_SSH_USER` / `TARGET_SSH_PASSWORD` in `.env`). The weak credentials are
+  deliberate, for brute-force scenarios.
+- `172.30.0.2`–`.127` is reserved for fixed IPs. Every other service (db, backend,
+  frontend, suricata) gets a dynamic address from `.128` up.
+- `172.30.0.1` is the network gateway. A scan reports it with the ports Docker
+  publishes on your machine (e.g. 8000, 5173).
+
+Scan the network (`SCAN_SUBNET` defaults to `172.30.0.0/24`):
+
+```sh
+curl -X POST localhost:8000/assets/scan
+curl localhost:8000/assets
+```
+
 ## Analysing your own PCAP
 
 1. Copy the capture into `pcaps/` (any filename; `.pcap`, `.pcapng` and `.cap`
