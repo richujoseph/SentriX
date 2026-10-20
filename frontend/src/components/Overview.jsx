@@ -39,12 +39,12 @@ export default function Overview() {
   return (
     <section className="overview" aria-label="Overview">
       <Stat label="Total alerts" value={counts?.alerts} tone="neutral" />
-      <Stat label="Incidents" value={counts?.incidents} tone="neutral" href="#/" />
+      <Stat label="Incidents" value={counts?.incidents} tone="neutral" href="#/dashboard" />
       <Stat
         label="High-severity open"
         value={counts?.highOpen}
         tone={counts?.highOpen ? "alert" : "neutral"}
-        href="#/"
+        href="#/dashboard"
       />
     </section>
   );

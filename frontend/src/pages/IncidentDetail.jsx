@@ -70,7 +70,7 @@ export default function IncidentDetail({ id }) {
   }, [id]);
 
   const back = (
-    <a className="back-link" href="#/">
+    <a className="back-link" href="#/dashboard">
       ← All incidents
     </a>
   );

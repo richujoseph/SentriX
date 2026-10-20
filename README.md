@@ -243,6 +243,10 @@ Both backends share `LLM_TIMEOUT` (seconds). Auto-summarization is tuned with
 
 ## Screenshots
 
+**Landing page:**
+
+![SentriX landing page](docs/img/landing.png)
+
 **Dashboard** — incidents sorted by severity with overview counts:
 
 ![SentriX dashboard](docs/img/eval_dashboard.png)

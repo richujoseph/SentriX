@@ -3,6 +3,7 @@ import Overview from "./components/Overview.jsx";
 import Assets from "./pages/Assets.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import IncidentDetail from "./pages/IncidentDetail.jsx";
+import Landing from "./pages/Landing.jsx";
 import { useHashPath } from "./router.js";
 
 export default function App() {
@@ -11,6 +12,9 @@ export default function App() {
   const [severity, setSeverity] = useState(null);
   const [status, setStatus] = useState(null);
   const [live, setLive] = useState({ error: null, updatedAt: null, refresh: null });
+
+  // Landing is its own full-bleed page with no app chrome.
+  if (path === "/" || path === "") return <Landing />;
 
   const incidentMatch = path.match(/^\/incidents\/(\d+)$/);
   const onAssets = path === "/assets";
@@ -21,12 +25,12 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-left">
           <a className="brand" href="#/">
-            <span className="brand-mark" aria-hidden="true">◆</span>
+            <span className="brand-mark" aria-hidden="true" />
             SentriX
           </a>
           <nav className="nav" aria-label="Main">
-            <a href="#/" aria-current={!onAssets ? "page" : undefined}>
-              Incidents
+            <a href="#/dashboard" aria-current={onDashboard ? "page" : undefined}>
+              Dashboard
             </a>
             <a href="#/assets" aria-current={onAssets ? "page" : undefined}>
               Assets
