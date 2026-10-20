@@ -7,13 +7,15 @@ A longer gap starts a new incident.
 
 Each incident is then scored 0-100 from how threatening the activity looks
 (alert severity, volume, signature diversity) multiplied by how much the
-targeted asset matters (its criticality).
+targeted asset matters (its criticality), and tagged with the MITRE ATT&CK
+tactics its alerts indicate, in the order they occurred.
 
 Pure stdlib, so it works on ORM rows (``models.RawAlert``, ``models.Asset``) or
 any other objects with the attributes in the protocols below.
 """
 
 import math
+import re
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -28,6 +30,7 @@ class AlertLike(Protocol):
     src_ip: str
     dest_ip: str | None
     signature: str
+    category: str | None
     severity: int | None
     timestamp: datetime
 
@@ -40,6 +43,16 @@ class AssetLike(Protocol):
 
 
 @dataclass
+class MitreTactic:
+    """An ATT&CK tactic observed in an incident, with when it first appeared."""
+
+    id: str
+    name: str
+    first_seen: datetime
+    alert_ids: list[int] = field(default_factory=list)
+
+
+@dataclass
 class IncidentCandidate:
     """A run of alerts from one source with no gap longer than the window."""
 
@@ -48,6 +61,8 @@ class IncidentCandidate:
     end_time: datetime
     alert_ids: list[int] = field(default_factory=list)
     alerts: list[AlertLike] = field(default_factory=list, repr=False)
+    # Filled in by tag_mitre(), in order of first appearance.
+    mitre_tactics: list[MitreTactic] = field(default_factory=list)
 
 
 def group_alerts(alerts: Iterable[AlertLike], window_minutes: float = 10) -> list[IncidentCandidate]:
@@ -180,3 +195,63 @@ def score_incident(incident: IncidentCandidate, assets: Iterable[AssetLike]) -> 
     )
     weight = CRITICALITY_WEIGHT.get(target_criticality(incident.alerts, assets), 1.0)
     return round(100 * threat * weight, 1)
+
+
+# --- MITRE ATT&CK tagging ---------------------------------------------------
+
+# (tactic id, tactic name, pattern) checked against the lowercased signature,
+# then the category. First match wins, so specific behaviours (tunnelling, C2,
+# brute force) come before generic ones like "scan" or "exploit".
+MITRE_RULES: list[tuple[str, str, re.Pattern[str]]] = [
+    ("TA0010", "Exfiltration", re.compile(r"dns.?tunnel|exfil|iodine|dnscat|data.?leak")),
+    ("TA0011", "Command and Control", re.compile(r"\bc2\b|\bcnc\b|command.and.control|beacon|botnet|trojan|malware")),
+    ("TA0006", "Credential Access", re.compile(r"brute|password|login.fail|auth\w*.fail|credential|kerberoast|mimikatz")),
+    ("TA0040", "Impact", re.compile(r"ransom|\bd?dos\b|flood|wiper|denial.of.service")),
+    ("TA0008", "Lateral Movement", re.compile(r"lateral|psexec|\bwmi\b|remote.service|pass.the.(hash|ticket)")),
+    ("TA0004", "Privilege Escalation", re.compile(r"privilege")),
+    ("TA0002", "Execution", re.compile(r"shell|command.injection|code.execution|\brce\b|powershell")),
+    ("TA0001", "Initial Access", re.compile(r"exploit|sql.injection|web.application.attack|phishing|overflow")),
+    ("TA0043", "Reconnaissance", re.compile(r"scan|nmap|sweep|probe|ping|recon|fingerprint|information.leak|connection.attempt")),
+]
+
+
+def classify_alert(alert: AlertLike) -> tuple[str, str] | None:
+    """Return the (tactic id, name) an alert indicates, or None if no rule matches.
+
+    The signature is checked first because it is more specific; the category
+    (e.g. "Attempted Information Leak") is a fallback.
+    """
+    for text in (alert.signature, alert.category):
+        if not text:
+            continue
+        lowered = text.lower()
+        for tactic_id, name, pattern in MITRE_RULES:
+            if pattern.search(lowered):
+                return tactic_id, name
+    return None
+
+
+def tag_mitre(incident: IncidentCandidate) -> list[MitreTactic]:
+    """Tag an incident with the MITRE ATT&CK tactics its alerts indicate.
+
+    Tactics are listed once each, in the order they first appear in the
+    incident's alerts, so the list reads as the story of the attack, e.g.
+    Reconnaissance -> Credential Access -> Exfiltration. Each entry records when
+    the tactic first appeared and which alerts showed it. Alerts that match no
+    rule are left untagged.
+
+    The result is stored on ``incident.mitre_tactics`` and also returned.
+    """
+    tactics: dict[str, MitreTactic] = {}
+    for alert in sorted(incident.alerts, key=lambda a: (a.timestamp, a.id)):
+        match = classify_alert(alert)
+        if match is None:
+            continue
+        tactic_id, name = match
+        if tactic_id not in tactics:
+            tactics[tactic_id] = MitreTactic(tactic_id, name, alert.timestamp)
+        tactics[tactic_id].alert_ids.append(alert.id)
+
+    # dicts keep insertion order, i.e. order of first appearance.
+    incident.mitre_tactics = list(tactics.values())
+    return incident.mitre_tactics
